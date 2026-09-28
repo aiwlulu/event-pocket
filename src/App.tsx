@@ -349,9 +349,9 @@ function EventForm({ initial, onClose, onSave }: { initial: EventPass | null; on
         </label>
         <label className="block">
           <span className="mb-2 block text-sm font-semibold">Event date</span>
-          <span className="relative block">
-            <CalendarDays size={17} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
-            <input required type="date" value={date} onChange={(event) => setDate(event.target.value)} className="h-12 w-full rounded-xl border border-line pl-11 pr-3 text-sm outline-none transition focus:border-brand focus:ring-4 focus:ring-blue-100" />
+          <span className="relative block w-full min-w-0 max-w-full overflow-hidden rounded-xl focus-within:ring-4 focus-within:ring-blue-100">
+            <CalendarDays size={17} className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-muted" />
+            <input required type="date" value={date} onChange={(event) => setDate(event.target.value)} className="event-date-input h-12 w-full min-w-0 max-w-full rounded-xl border border-line bg-white pl-11 pr-3 text-sm outline-none transition focus:border-brand" />
           </span>
         </label>
         <div>
