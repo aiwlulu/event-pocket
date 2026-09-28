@@ -32,3 +32,6 @@ button { -webkit-tap-highlight-color: transparent; }
   min-width: 0;
   text-align: left;
 }
+
+.privacy-summary { list-style: none; }
+.privacy-summary::-webkit-details-marker { display: none; }

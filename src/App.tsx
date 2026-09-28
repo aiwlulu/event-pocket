@@ -245,22 +245,26 @@ function App() {
           </div>
         )}
 
-        <section className="mt-10 rounded-3xl border border-line bg-white p-5 shadow-sm sm:p-6">
-          <div className="mb-4 flex items-start gap-3">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700"><ShieldCheck size={19} /></span>
-            <div>
-              <h2 className="text-sm font-semibold">Private by design</h2>
-              <p className="mt-1 text-xs leading-5 text-muted">Your events and ticket images stay in this browser. They are never uploaded.</p>
+        <details className="group mt-8 rounded-2xl border border-line bg-white shadow-sm">
+          <summary className="privacy-summary flex cursor-pointer items-center gap-3 px-4 py-4 sm:px-5">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700"><ShieldCheck size={18} /></span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold">Privacy &amp; backups</span>
+              <span className="block text-xs text-muted">Local storage and data controls</span>
+            </span>
+            <ChevronRight size={18} className="text-muted transition-transform group-open:rotate-90" />
+          </summary>
+          <div className="border-t border-line px-4 pb-5 pt-4 sm:px-5">
+            <p className="text-xs leading-5 text-muted">Your events and ticket images stay in this browser. They are never uploaded.</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button onClick={exportBackup} disabled={!events.length} className="inline-flex items-center gap-2 rounded-xl bg-slate-50 px-3.5 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-45"><Upload size={14} className="rotate-180" /> Export backup</button>
+              <button onClick={() => importRef.current?.click()} className="inline-flex items-center gap-2 rounded-xl bg-slate-50 px-3.5 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"><Upload size={14} /> Import backup</button>
+              <button onClick={handleClear} disabled={!events.length} className="inline-flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-45"><Trash2 size={14} /> Clear data</button>
+              <input ref={importRef} type="file" accept="application/json,.json" onChange={importBackup} className="hidden" />
             </div>
+            <p className="mt-4 text-[11px] leading-5 text-muted">Backups include ticket images. Keep backup files private. Each browser and device has separate data.</p>
           </div>
-          <div className="flex flex-wrap gap-2 border-t border-line pt-4">
-            <button onClick={exportBackup} disabled={!events.length} className="inline-flex items-center gap-2 rounded-xl bg-slate-50 px-3.5 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-45"><Upload size={14} className="rotate-180" /> Export backup</button>
-            <button onClick={() => importRef.current?.click()} className="inline-flex items-center gap-2 rounded-xl bg-slate-50 px-3.5 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"><Upload size={14} /> Import backup</button>
-            <button onClick={handleClear} disabled={!events.length} className="inline-flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-45"><Trash2 size={14} /> Clear data</button>
-            <input ref={importRef} type="file" accept="application/json,.json" onChange={importBackup} className="hidden" />
-          </div>
-        </section>
-        <p className="mt-5 px-2 text-center text-[11px] leading-5 text-muted">Backups include your ticket images. Keep backup files private. Data stays separate on each browser and device.</p>
+        </details>
       </main>
 
       <button onClick={startAdd} aria-label="Add event" className="fixed bottom-5 right-5 z-20 grid h-14 w-14 place-items-center rounded-full bg-brand text-white shadow-[0_8px_24px_rgba(52,120,246,.32)] transition hover:scale-105 hover:bg-blue-700 sm:hidden" style={{ bottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}>
