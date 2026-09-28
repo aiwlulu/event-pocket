@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Event Pocket">
+  <rect width="64" height="64" rx="17" fill="#3478f6"/>
+  <path d="M16 18h32v9c-3.2 0-5.5 2.3-5.5 5s2.3 5 5.5 5v9H16v-9c3.2 0 5.5-2.3 5.5-5s-2.3-5-5.5-5v-9Z" fill="#fff"/>
+  <path d="M26 26h5v5h-5zm7 0h5v5h-5zm-7 7h5v5h-5zm7 0h5v5h-5z" fill="#3478f6"/>
+</svg>
