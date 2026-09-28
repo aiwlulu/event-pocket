@@ -12,8 +12,8 @@ A mobile-first event pass manager. Event details and ticket images stay in the b
 
 ## Features
 
-- Add, edit, and delete events with an optional ticket or QR image
-- Automatic Upcoming and Past sections sorted by event date
+- Add, edit, and delete single-day or multi-day events with an optional ticket or QR image
+- Automatic Upcoming and Past sections sorted by start date; multi-day events stay Upcoming through their final day
 - Large, full-screen ticket view
 - JSON backup export and import, including image data
 - Clear all local event data
@@ -37,4 +37,4 @@ After the workflow succeeds, the site will be available at https://aiwlulu.githu
 
 ## Backups
 
-Choose **Export backup** in the app to download a JSON file. The backup includes images encoded in the file. Treat it like an entry ticket: anyone with the backup may be able to access the QR code. Importing a backup replaces the current local collection after validation.
+Choose **Export backup** in the app to download a JSON file. The backup includes images encoded in the file. Treat it like an entry ticket: anyone with the backup may be able to access the QR code. Importing a backup replaces the current local collection after validation. Existing version 1 backups without an end date remain compatible.

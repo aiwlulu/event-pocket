@@ -33,6 +33,24 @@ const today = () => {
 const prettyDate = (date: string, options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' }) =>
   new Date(date + 'T12:00:00').toLocaleDateString('en-US', options)
 
+function eventEndDate(event: EventPass): string {
+  return event.endDate ?? event.date
+}
+
+function eventDateLabel(event: EventPass): string {
+  const endDate = event.endDate
+  if (!endDate || endDate === event.date) return prettyDate(event.date)
+  const [startYear, startMonth, startDay] = event.date.split('-').map(Number)
+  const [endYear, endMonth, endDay] = endDate.split('-').map(Number)
+  if (startYear === endYear && startMonth === endMonth) {
+    return prettyDate(event.date, { month: 'short' }) + ' ' + startDay + ' to ' + endDay + ', ' + startYear
+  }
+  if (startYear === endYear) {
+    return prettyDate(event.date, { month: 'short', day: 'numeric' }) + ' to ' +
+      ' ' + prettyDate(endDate, { month: 'short', day: 'numeric' }) + ', ' + startYear
+  }
+  return prettyDate(event.date) + ' to ' + prettyDate(endDate)
+}
 function readImage(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -73,8 +91,8 @@ function App() {
       .sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title))
   }, [events, query])
 
-  const upcoming = sortedEvents.filter((event) => event.date >= today())
-  const past = sortedEvents.filter((event) => event.date < today())
+  const upcoming = sortedEvents.filter((event) => eventEndDate(event) >= today())
+  const past = sortedEvents.filter((event) => eventEndDate(event) < today())
 
   function startAdd() {
     setEditing(null)
@@ -142,6 +160,8 @@ function App() {
       const valid = parsed.events.every((event) =>
         event && typeof event.id === 'string' && typeof event.title === 'string' &&
         typeof event.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(event.date) &&
+        (event.endDate === undefined || (typeof event.endDate === 'string' &&
+          /^\d{4}-\d{2}-\d{2}$/.test(event.endDate) && event.endDate >= event.date)) &&
         typeof event.note === 'string' &&
         (event.image === null || typeof event.image === 'string') &&
         typeof event.createdAt === 'string' && typeof event.updatedAt === 'string',
@@ -254,7 +274,7 @@ function App() {
       {showImage && selected?.image && <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-slate-950 p-5" onClick={() => setShowImage(false)}>
         <button onClick={() => setShowImage(false)} aria-label="Close full-screen ticket" className="absolute right-5 top-5 grid h-11 w-11 place-items-center rounded-full bg-white/10 text-white"><X size={22} /></button>
         <img src={selected.image} alt={`${selected.title} ticket QR code`} className="max-h-[78vh] max-w-full rounded-2xl bg-white object-contain p-3" onClick={(event) => event.stopPropagation()} />
-        <p className="mt-5 text-sm font-medium text-white">{selected.title} · {prettyDate(selected.date)}</p>
+        <p className="mt-5 text-sm font-medium text-white">{selected.title} · {eventDateLabel(selected)}</p>
         <p className="mt-1 text-xs text-white/60">Show this image at the entrance</p>
       </div>}
     </div>
@@ -278,7 +298,8 @@ function EventSection({ title, subtitle, events, onSelect }: { title: string; su
           </span>
           <span className="min-w-0 flex-1">
             <span className="block truncate text-base font-semibold">{event.title}</span>
-            <span className="mt-1 block truncate text-sm text-muted">{event.note || prettyDate(event.date)}</span>
+            <span className="mt-1 block truncate text-sm text-muted">{eventDateLabel(event)}</span>
+            {event.note && <span className="mt-0.5 block truncate text-xs text-muted">{event.note}</span>}
           </span>
           <span className="flex items-center gap-1 text-sm font-semibold text-brand">View <ChevronRight size={17} className="transition group-hover:translate-x-0.5" /></span>
         </button>)}
@@ -290,6 +311,8 @@ function EventSection({ title, subtitle, events, onSelect }: { title: string; su
 function EventForm({ initial, onClose, onSave }: { initial: EventPass | null; onClose: () => void; onSave: (event: EventPass) => Promise<void> }) {
   const [title, setTitle] = useState(initial?.title ?? '')
   const [date, setDate] = useState(initial?.date ?? '')
+  const [endDate, setEndDate] = useState(initial?.endDate ?? '')
+  const [multiDay, setMultiDay] = useState(Boolean(initial?.endDate && initial.endDate > initial.date))
   const [note, setNote] = useState(initial?.note ?? '')
   const [image, setImage] = useState<string | null>(initial?.image ?? null)
   const [error, setError] = useState('')
@@ -319,12 +342,18 @@ function EventForm({ initial, onClose, onSave }: { initial: EventPass | null; on
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!title.trim() || !date) return
+    if (multiDay && (!endDate || endDate <= date)) {
+      setError('End date must be after the event date.')
+      return
+    }
+    setError('')
     setSaving(true)
     const now = new Date().toISOString()
     await onSave({
       id: initial?.id ?? crypto.randomUUID(),
       title: title.trim(),
       date,
+      endDate: multiDay ? endDate : undefined,
       note: note.trim(),
       image,
       createdAt: initial?.createdAt ?? now,
@@ -354,6 +383,18 @@ function EventForm({ initial, onClose, onSave }: { initial: EventPass | null; on
             <input required type="date" value={date} onChange={(event) => setDate(event.target.value)} className="event-date-input h-12 w-full min-w-0 max-w-full rounded-xl border border-line bg-white pl-11 pr-3 text-sm outline-none transition focus:border-brand" />
           </span>
         </label>
+        <label className="flex items-center gap-3 text-sm font-medium">
+          <input type="checkbox" checked={multiDay} onChange={(event) => { setMultiDay(event.target.checked); setError('') }} className="h-4 w-4 accent-brand" />
+          This event spans multiple days
+        </label>
+        {multiDay && <label className="block">
+          <span className="mb-2 block text-sm font-semibold">End date</span>
+          <span className="relative block w-full min-w-0 max-w-full overflow-hidden rounded-xl focus-within:ring-4 focus-within:ring-blue-100">
+            <CalendarDays size={17} className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-muted" />
+            <input required type="date" min={date || undefined} value={endDate} onChange={(event) => setEndDate(event.target.value)} className="event-date-input h-12 w-full min-w-0 max-w-full rounded-xl border border-line bg-white pl-11 pr-3 text-sm outline-none transition focus:border-brand" />
+          </span>
+          <span className="mt-1 block text-xs font-normal text-muted">Choose the last day covered by this pass.</span>
+        </label>}
         <div>
           <span className="mb-2 block text-sm font-semibold">Ticket or QR image <span className="font-normal text-muted">· optional</span></span>
           {image ? <div className="flex items-center gap-4 rounded-2xl border border-line bg-slate-50 p-3">
@@ -383,7 +424,7 @@ function EventDetails({ event, onClose, onEdit, onDelete, onShowImage }: { event
       <div className="mb-6 flex items-start justify-between">
         <div className="flex items-start gap-3">
           <button onClick={onClose} aria-label="Back to events" className="mt-0.5 grid h-9 w-9 place-items-center rounded-full bg-slate-50 text-slate-600 sm:hidden"><ArrowLeft size={18} /></button>
-          <div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand">{prettyDate(event.date)}</p><h2 id="details-title" className="mt-1 text-2xl font-bold tracking-tight">{event.title}</h2></div>
+          <div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand">{eventDateLabel(event)}</p><h2 id="details-title" className="mt-1 text-2xl font-bold tracking-tight">{event.title}</h2></div>
         </div>
         <button onClick={onClose} aria-label="Close details" className="hidden h-10 w-10 place-items-center rounded-full bg-slate-50 text-slate-500 hover:bg-slate-100 sm:grid"><X size={20} /></button>
       </div>

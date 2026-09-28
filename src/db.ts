@@ -2,6 +2,7 @@ export type EventPass = {
   id: string
   title: string
   date: string
+  endDate?: string
   note: string
   image: string | null
   createdAt: string
