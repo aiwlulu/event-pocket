@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   CalendarDays,
   Check,
+  ChevronLeft,
   ChevronRight,
   ImagePlus,
   LockKeyhole,
@@ -60,6 +61,71 @@ function readImage(file: File): Promise<string> {
   })
 }
 
+function nextDate(date: string): string {
+  const next = new Date(date + 'T00:00:00Z')
+  next.setUTCDate(next.getUTCDate() + 1)
+  return next.toISOString().slice(0, 10)
+}
+
+type DatePickerProps = {
+  label: string
+  value: string
+  min?: string
+  open: boolean
+  onChange: (value: string) => void
+  onToggle: () => void
+  onClose: () => void
+}
+
+const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+function DatePicker({ label, value, min, open, onChange, onToggle, onClose }: DatePickerProps) {
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const [displayMonth, setDisplayMonth] = useState(() => new Date((value || min || today()) + 'T12:00:00'))
+
+  useEffect(() => {
+    if (open) setDisplayMonth(new Date((value || min || today()) + 'T12:00:00'))
+  }, [open])
+
+  const year = displayMonth.getFullYear()
+  const month = displayMonth.getMonth()
+  const firstWeekday = new Date(year, month, 1).getDay()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const cells = Array.from({ length: Math.ceil((firstWeekday + daysInMonth) / 7) * 7 }, (_, index) => index - firstWeekday + 1)
+  const currentDay = today()
+
+  function choose(iso: string) {
+    onChange(iso)
+    onClose()
+    requestAnimationFrame(() => triggerRef.current?.focus())
+  }
+
+  return <div className="min-w-0">
+    <span className="mb-2 block text-sm font-semibold">{label}</span>
+    <button ref={triggerRef} type="button" aria-label={label + ': ' + (value ? prettyDate(value) : 'Select a date')} aria-expanded={open} onClick={onToggle} className="flex h-12 w-full min-w-0 items-center gap-3 rounded-xl border border-line bg-white px-4 text-left text-sm outline-none transition hover:border-blue-200 focus:border-brand focus:ring-4 focus:ring-blue-100">
+      <CalendarDays size={17} className="shrink-0 text-muted" />
+      <span className={'min-w-0 flex-1 truncate ' + (value ? 'text-ink' : 'text-slate-400')}>{value ? prettyDate(value) : 'Select a date'}</span>
+      <ChevronRight size={16} className={'shrink-0 text-muted transition-transform ' + (open ? '-rotate-90' : 'rotate-90')} />
+    </button>
+    {open && <div className="mt-2 rounded-2xl border border-line bg-white p-3 shadow-card sm:p-4" role="group" aria-label={label + ' calendar'} onKeyDown={(event) => { if (event.key === 'Escape') { onClose(); triggerRef.current?.focus() } }}>
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <button type="button" onClick={() => setDisplayMonth(new Date(year, month - 1, 1))} aria-label="Previous month" className="grid h-9 w-9 place-items-center rounded-full text-slate-600 hover:bg-slate-100"><ChevronLeft size={18} /></button>
+        <span className="text-sm font-semibold">{displayMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
+        <button type="button" onClick={() => setDisplayMonth(new Date(year, month + 1, 1))} aria-label="Next month" className="grid h-9 w-9 place-items-center rounded-full text-slate-600 hover:bg-slate-100"><ChevronRight size={18} /></button>
+      </div>
+      <div className="grid grid-cols-7 gap-0.5 text-center">
+        {weekdays.map((day) => <span key={day} className="py-1 text-[11px] font-semibold text-muted">{day}</span>)}
+        {cells.map((day, index) => {
+          if (day < 1 || day > daysInMonth) return <span key={'empty-' + index} />
+          const iso = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0')
+          const selected = iso === value
+          return <button key={iso} type="button" disabled={Boolean(min && iso < min)} onClick={() => choose(iso)} aria-label={prettyDate(iso, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })} aria-pressed={selected} aria-current={iso === currentDay ? 'date' : undefined} className={'mx-auto grid h-10 w-full place-items-center rounded-xl text-sm transition focus:outline-none focus:ring-2 focus:ring-brand disabled:cursor-not-allowed disabled:text-slate-300 ' + (selected ? 'bg-brand font-semibold text-white' : iso === currentDay ? 'bg-blue-50 font-semibold text-brand hover:bg-blue-100' : 'text-ink hover:bg-slate-100')}>{day}</button>
+        })}
+      </div>
+      {(!min || currentDay >= min) && <button type="button" onClick={() => choose(currentDay)} className="mt-3 rounded-lg px-3 py-2 text-xs font-semibold text-brand hover:bg-blue-50">Today</button>}
+    </div>}
+  </div>
+}
 function App() {
   const [events, setEvents] = useState<EventPass[]>([])
   const [loaded, setLoaded] = useState(false)
@@ -317,6 +383,7 @@ function EventForm({ initial, onClose, onSave }: { initial: EventPass | null; on
   const [date, setDate] = useState(initial?.date ?? '')
   const [endDate, setEndDate] = useState(initial?.endDate ?? '')
   const [multiDay, setMultiDay] = useState(Boolean(initial?.endDate && initial.endDate > initial.date))
+  const [activeDatePicker, setActiveDatePicker] = useState<'start' | 'end' | null>(null)
   const [note, setNote] = useState(initial?.note ?? '')
   const [image, setImage] = useState<string | null>(initial?.image ?? null)
   const [error, setError] = useState('')
@@ -345,8 +412,16 @@ function EventForm({ initial, onClose, onSave }: { initial: EventPass | null; on
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!title.trim() || !date) return
-    if (multiDay && (!endDate || endDate <= date)) {
+    if (!title.trim()) return
+    if (!date) {
+      setError('Choose an event date.')
+      return
+    }
+    if (multiDay && !endDate) {
+      setError('Choose an end date.')
+      return
+    }
+    if (multiDay && endDate <= date) {
       setError('End date must be after the event date.')
       return
     }
@@ -380,25 +455,15 @@ function EventForm({ initial, onClose, onSave }: { initial: EventPass | null; on
           <span className="mb-2 block text-sm font-semibold">Event name</span>
           <input required maxLength={100} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="e.g. Alishan Trip" className="h-12 w-full rounded-xl border border-line px-4 text-sm outline-none transition focus:border-brand focus:ring-4 focus:ring-blue-100" />
         </label>
-        <label className="block">
-          <span className="mb-2 block text-sm font-semibold">Event date</span>
-          <span className="relative block w-full min-w-0 max-w-full overflow-hidden rounded-xl focus-within:ring-4 focus-within:ring-blue-100">
-            <CalendarDays size={17} className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-muted" />
-            <input required type="date" value={date} onChange={(event) => setDate(event.target.value)} className="event-date-input h-12 w-full min-w-0 max-w-full rounded-xl border border-line bg-white pl-11 pr-3 text-sm outline-none transition focus:border-brand" />
-          </span>
-        </label>
+        <DatePicker label="Event date" value={date} open={activeDatePicker === 'start'} onToggle={() => setActiveDatePicker((current) => current === 'start' ? null : 'start')} onClose={() => setActiveDatePicker(null)} onChange={(chosen) => { setDate(chosen); if (endDate && endDate <= chosen) setEndDate(''); setError('') }} />
         <label className="flex items-center gap-3 text-sm font-medium">
-          <input type="checkbox" checked={multiDay} onChange={(event) => { setMultiDay(event.target.checked); setError('') }} className="h-4 w-4 accent-brand" />
+          <input type="checkbox" checked={multiDay} onChange={(event) => { setMultiDay(event.target.checked); setActiveDatePicker(null); setError('') }} className="h-4 w-4 accent-brand" />
           This event spans multiple days
         </label>
-        {multiDay && <label className="block">
-          <span className="mb-2 block text-sm font-semibold">End date</span>
-          <span className="relative block w-full min-w-0 max-w-full overflow-hidden rounded-xl focus-within:ring-4 focus-within:ring-blue-100">
-            <CalendarDays size={17} className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-muted" />
-            <input required type="date" min={date || undefined} value={endDate} onChange={(event) => setEndDate(event.target.value)} className="event-date-input h-12 w-full min-w-0 max-w-full rounded-xl border border-line bg-white pl-11 pr-3 text-sm outline-none transition focus:border-brand" />
-          </span>
-          <span className="mt-1 block text-xs font-normal text-muted">Choose the last day covered by this pass.</span>
-        </label>}
+        {multiDay && <div>
+          <DatePicker label="End date" value={endDate} min={date ? nextDate(date) : undefined} open={activeDatePicker === 'end'} onToggle={() => setActiveDatePicker((current) => current === 'end' ? null : 'end')} onClose={() => setActiveDatePicker(null)} onChange={(chosen) => { setEndDate(chosen); setError('') }} />
+          <p className="mt-1 text-xs text-muted">Choose the last day covered by this pass.</p>
+        </div>}
         <div>
           <span className="mb-2 block text-sm font-semibold">Ticket or QR image <span className="font-normal text-muted">· optional</span></span>
           {image ? <div className="flex items-center gap-4 rounded-2xl border border-line bg-slate-50 p-3">

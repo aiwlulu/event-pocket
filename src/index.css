@@ -20,18 +20,5 @@ button { -webkit-tap-highlight-color: transparent; }
 
 .safe-bottom { padding-bottom: max(1.5rem, env(safe-area-inset-bottom)); }
 
-/* iOS Safari gives date controls a wide intrinsic size. Keep it inside the form. */
-.event-date-input {
-  display: block;
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
-  box-sizing: border-box;
-}
-.event-date-input::-webkit-date-and-time-value {
-  min-width: 0;
-  text-align: left;
-}
-
 .privacy-summary { list-style: none; }
 .privacy-summary::-webkit-details-marker { display: none; }
