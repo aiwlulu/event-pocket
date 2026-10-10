@@ -13,7 +13,10 @@ A mobile-first event pass manager. Event details and ticket images stay in the b
 ## Features
 
 - Add, edit, and delete single-day or multi-day events with an optional ticket or QR image
-- Automatic Upcoming and Past sections sorted by start date; multi-day events stay Upcoming through their final day
+- Upcoming events sorted by start date; multi-day events stay Upcoming through their final day
+- Past events sorted by end date, newest first, with the latest 3 shown initially
+- Show 5 more past events at a time, or collapse back to the latest 3
+- Search titles and notes across all events, including older history; matching past events are shown without a preview limit
 - Large, full-screen ticket view
 - JSON backup export and import, including image data
 - Clear all local event data
