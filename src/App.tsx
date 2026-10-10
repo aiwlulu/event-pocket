@@ -157,8 +157,11 @@ function App() {
       .sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title))
   }, [events, query])
 
-  const upcoming = sortedEvents.filter((event) => eventEndDate(event) >= today())
-  const past = sortedEvents.filter((event) => eventEndDate(event) < today())
+  const currentDate = today()
+  const upcoming = sortedEvents.filter((event) => eventEndDate(event) >= currentDate)
+  const past = sortedEvents
+    .filter((event) => eventEndDate(event) < currentDate)
+    .sort((a, b) => eventEndDate(b).localeCompare(eventEndDate(a)) || b.date.localeCompare(a.date) || a.title.localeCompare(b.title))
 
   function startAdd() {
     setEditing(null)
@@ -307,7 +310,7 @@ function App() {
         ) : (
           <div className="space-y-8">
             <EventSection title="Upcoming" subtitle={upcoming.length ? `${upcoming.length} saved ${upcoming.length === 1 ? 'event' : 'events'}` : 'Nothing on your calendar yet'} events={upcoming} onSelect={setSelected} />
-            {past.length > 0 && <EventSection title="Past events" subtitle="Your recent history" events={past} onSelect={setSelected} />}
+            {past.length > 0 && <PastEvents key={query.trim().toLowerCase()} events={past} searching={Boolean(query.trim())} onSelect={setSelected} />}
           </div>
         )}
 
@@ -349,6 +352,34 @@ function App() {
       </div>}
     </div>
   )
+}
+
+const PAST_PREVIEW_COUNT = 3
+const PAST_PAGE_SIZE = 5
+
+function PastEvents({ events, searching, onSelect }: { events: EventPass[]; searching: boolean; onSelect: (event: EventPass) => void }) {
+  const [visibleCount, setVisibleCount] = useState(PAST_PREVIEW_COUNT)
+  const headingRef = useRef<HTMLDivElement>(null)
+  const shown = searching ? events.length : Math.min(visibleCount, events.length)
+  const remaining = events.length - shown
+
+  function collapse() {
+    setVisibleCount(PAST_PREVIEW_COUNT)
+    headingRef.current?.focus({ preventScroll: true })
+    headingRef.current?.scrollIntoView({ block: 'start', behavior: 'auto' })
+  }
+
+  return <div ref={headingRef} tabIndex={-1} aria-label="Past events" className="scroll-mt-5 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+    <div id="past-events-list">
+      <EventSection title="Past events" subtitle={`${shown} of ${events.length} ${searching ? 'matching events' : 'events'} · Most recently ended first`} events={events.slice(0, shown)} onSelect={onSelect} />
+    </div>
+    {!searching && events.length > PAST_PREVIEW_COUNT && <div className="mt-3 flex flex-wrap gap-2">
+      {remaining > 0 && <button type="button" aria-controls="past-events-list" onClick={() => setVisibleCount((count) => count + PAST_PAGE_SIZE)} className="min-h-11 flex-1 rounded-xl border border-line bg-white px-4 py-3 text-sm font-semibold text-brand transition hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand">
+        Show {Math.min(PAST_PAGE_SIZE, remaining)} more ({remaining} remaining)
+      </button>}
+      {shown > PAST_PREVIEW_COUNT && <button type="button" aria-controls="past-events-list" onClick={collapse} className="min-h-11 rounded-xl px-4 py-3 text-sm font-semibold text-muted transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand">Show less</button>}
+    </div>}
+  </div>
 }
 
 function EventSection({ title, subtitle, events, onSelect }: { title: string; subtitle: string; events: EventPass[]; onSelect: (event: EventPass) => void }) {
