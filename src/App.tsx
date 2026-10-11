@@ -189,11 +189,11 @@ function App() {
   }
 
   async function handleDelete(event: EventPass) {
-    if (!window.confirm(`Delete “${event.title}” from this device?`)) return
     try {
       await deleteEvent(event.id)
       setEvents(await getEvents())
       setSelected(null)
+      setShowImage(false)
       setNotice('Event deleted.')
     } catch {
       setNotice('Could not delete this event.')
@@ -518,7 +518,15 @@ function EventForm({ initial, onClose, onSave }: { initial: EventPass | null; on
   </div>
 }
 
-function EventDetails({ event, onClose, onEdit, onDelete, onShowImage }: { event: EventPass; onClose: () => void; onEdit: () => void; onDelete: () => void; onShowImage: () => void }) {
+function EventDetails({ event, onClose, onEdit, onDelete, onShowImage }: { event: EventPass; onClose: () => void; onEdit: () => void; onDelete: () => Promise<void>; onShowImage: () => void }) {
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  async function deleteConfirmed() {
+    setDeleting(true)
+    try { await onDelete() } finally { setDeleting(false) }
+  }
+
   return <div className="fixed inset-0 z-40 flex items-end justify-center bg-slate-950/40 p-0 backdrop-blur-[2px] sm:items-center sm:p-5" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
     <section role="dialog" aria-modal="true" aria-labelledby="details-title" className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-[28px] bg-white p-5 shadow-2xl safe-bottom sm:rounded-[28px] sm:p-7">
       <div className="mb-6 flex items-start justify-between">
@@ -528,17 +536,26 @@ function EventDetails({ event, onClose, onEdit, onDelete, onShowImage }: { event
         </div>
         <button onClick={onClose} aria-label="Close details" className="hidden h-10 w-10 place-items-center rounded-full bg-slate-50 text-slate-500 hover:bg-slate-100 sm:grid"><X size={20} /></button>
       </div>
-      {event.image ? <button onClick={onShowImage} className="group relative flex min-h-56 w-full items-center justify-center overflow-hidden rounded-2xl border border-line bg-white p-5">
-        <img src={event.image} alt={`${event.title} ticket or QR code`} className="max-h-72 max-w-full object-contain" />
-        <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-900/70 to-transparent px-4 pb-3 pt-8 text-center text-xs font-medium text-white opacity-0 transition group-hover:opacity-100 group-focus:opacity-100">Tap to enlarge for scanning</span>
+      {event.image ? <button type="button" aria-label="Enlarge ticket image" onClick={onShowImage} className="group relative isolate flex min-h-56 w-full items-center justify-center overflow-hidden rounded-2xl border border-line bg-white p-5">
+        <img src={event.image} alt={`${event.title} ticket or QR code`} className="pointer-events-none block max-h-72 max-w-full object-contain" />
+        <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-900/70 to-transparent px-4 pb-3 pt-8 text-center text-xs font-medium text-white opacity-0 transition group-hover:opacity-100 group-focus:opacity-100">Tap to enlarge for scanning</span>
       </button> : <div className="flex min-h-48 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 text-center">
         <span className="mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-white text-muted shadow-sm"><ImagePlus size={21} /></span>
         <p className="text-sm font-medium">No ticket image yet</p><p className="mt-1 text-xs text-muted">Add a QR code or ticket image when you are ready.</p>
       </div>}
       {event.note && <div className="mt-5 rounded-2xl bg-slate-50 p-4"><p className="text-xs font-semibold uppercase tracking-wider text-muted">Notes</p><p className="mt-2 whitespace-pre-wrap text-sm leading-6">{event.note}</p></div>}
-      <div className="mt-5 flex gap-3">
-        <button onClick={onEdit} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-blue-50 py-3 text-sm font-semibold text-brand transition hover:bg-blue-100"><Pencil size={16} /> Edit</button>
-        <button onClick={onDelete} className="flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-rose-600 transition hover:bg-rose-50"><Trash2 size={16} /><span className="hidden sm:inline">Delete</span></button>
+      <div className="relative z-10 mt-5 rounded-2xl bg-white" onClick={(click) => click.stopPropagation()}>
+        {confirmDelete ? <div className="rounded-2xl border border-rose-100 bg-rose-50 p-4" role="group" aria-label="Confirm event deletion">
+          <p className="text-sm font-semibold">Delete “{event.title}”?</p>
+          <p className="mt-1 text-xs text-muted">This removes the event and its ticket from this device.</p>
+          <div className="mt-4 flex gap-3">
+            <button type="button" autoFocus disabled={deleting} onClick={() => setConfirmDelete(false)} className="min-h-12 flex-1 rounded-xl bg-white px-4 py-3 text-sm font-semibold disabled:opacity-60">Cancel</button>
+            <button type="button" disabled={deleting} onClick={deleteConfirmed} className="min-h-12 flex-1 rounded-xl bg-rose-600 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">{deleting ? 'Deleting…' : 'Delete event'}</button>
+          </div>
+        </div> : <div className="flex gap-3">
+          <button type="button" onClick={onEdit} className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-blue-50 px-4 py-3 text-sm font-semibold text-brand transition hover:bg-blue-100"><Pencil size={16} /> Edit</button>
+          <button type="button" onClick={() => setConfirmDelete(true)} className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600 transition hover:bg-rose-100"><Trash2 size={16} /> Delete</button>
+        </div>}
       </div>
     </section>
   </div>
